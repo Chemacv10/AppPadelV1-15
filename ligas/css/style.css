@@ -660,3 +660,17 @@ nav, .nav {
 .ltab.active{ color: var(--azul); border-bottom-color: var(--azul); }
 .btn-login  { width: 100%; padding: 13px; background: var(--azul); color: #fff; border: none; border-radius: 12px; font-size: 14px; font-weight: 900; cursor: pointer; margin-top: 4px; box-shadow: 0 4px 14px rgba(37,99,235,.3); }
 .btn-login:hover { background: #1d4ed8; }
+
+/* ── Botones generales (compatibilidad con liga.html) ── */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  padding: 9px 16px; border-radius: 12px; border: 1.5px solid var(--borde);
+  background: var(--card); color: var(--texto);
+  font-family: Nunito, sans-serif; font-size: 12px; font-weight: 800;
+  cursor: pointer; transition: all .15s; white-space: nowrap;
+}
+.btn:hover   { background: #f1f5f9; }
+.btn.pr      { background: var(--azul); color: #fff; border-color: var(--azul); box-shadow: 0 4px 12px rgba(37,99,235,.25); }
+.btn.pr:hover { background: #1d4ed8; }
+.btn.danger  { background: #fee2e2; color: var(--rojo); border-color: #fca5a5; }
+.btn.sm      { padding: 6px 12px; font-size: 11px; border-radius: 9px; }

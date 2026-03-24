@@ -72,6 +72,28 @@
 
     <!-- ─── FASE 1: Datos generales ─── -->
     <div class="fase active" id="fase-1">
+
+      <!-- Club / Organización -->
+      <div style="font-size:10px;font-weight:900;color:var(--sutil);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Club / Organización</div>
+      <div style="display:flex;gap:10px;align-items:flex-start;margin-bottom:14px;background:#f8fafc;border-radius:14px;padding:12px;border:1.5px solid var(--borde)">
+        <!-- Logo -->
+        <div id="f1-logo-wrap" onclick="document.getElementById('f1-logo-input').click()"
+             style="width:60px;height:60px;border-radius:12px;border:2px dashed var(--borde);background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;overflow:hidden;transition:border-color .15s">
+          <img id="f1-logo-preview" src="" style="width:100%;height:100%;object-fit:cover;display:none;border-radius:10px">
+          <div id="f1-logo-placeholder" style="text-align:center">
+            <div style="font-size:20px">🖼</div>
+            <div style="font-size:8px;font-weight:800;color:var(--sutil);margin-top:2px">LOGO</div>
+          </div>
+          <input type="file" id="f1-logo-input" accept="image/*" style="display:none" onchange="f1LogoPreview(this)">
+        </div>
+        <!-- Nombre club -->
+        <div style="flex:1;min-width:0">
+          <div class="flbl">Nombre del club / organizador</div>
+          <input class="finp" id="f1-club-nombre" placeholder="Ej: Club Pádel Tomares" style="margin-top:4px">
+          <div id="f1-logo-estado" style="font-size:10px;font-weight:700;color:var(--sutil);margin-top:4px"></div>
+        </div>
+      </div>
+
       <div class="fgrp">
         <div class="flbl">Nombre de la liga *</div>
         <input class="finp" id="f1-nombre" placeholder="Ej: Liga Masculina 2025/26">
@@ -447,6 +469,37 @@ function sincronizarAplazFase4() {
   document.getElementById('f4-aplaz').value = aplaz;
 }
 
+// ── Logo club ──────────────────────────────────────────────────
+let _logoFile = null;
+
+function f1LogoPreview(input) {
+  const file = input.files[0];
+  if (!file) return;
+  if (!file.type.startsWith('image/')) { toast('Solo imágenes', 'warn'); return; }
+  if (file.size > 3 * 1024 * 1024) { toast('Imagen máx. 3 MB', 'warn'); return; }
+  _logoFile = file;
+  const reader = new FileReader();
+  reader.onload = e => {
+    document.getElementById('f1-logo-preview').src = e.target.result;
+    document.getElementById('f1-logo-preview').style.display = 'block';
+    document.getElementById('f1-logo-placeholder').style.display = 'none';
+    document.getElementById('f1-logo-wrap').style.borderStyle = 'solid';
+    document.getElementById('f1-logo-wrap').style.borderColor = 'var(--verde)';
+    document.getElementById('f1-logo-estado').textContent = file.name;
+  };
+  reader.readAsDataURL(file);
+}
+
+async function subirLogo(ligaId) {
+  if (!_logoFile) return null;
+  const ext  = _logoFile.name.split('.').pop().toLowerCase() || 'jpg';
+  const path = `${LP.orgId}/${ligaId}/logo.${ext}`;
+  const { error } = await _sb.storage.from('logos').upload(path, _logoFile, { upsert: true, contentType: _logoFile.type });
+  if (error) throw error;
+  const { data } = _sb.storage.from('logos').getPublicUrl(path);
+  return data.publicUrl;
+}
+
 // ── Crear liga ─────────────────────────────────────────────────
 async function crearLiga() {
   const btn = document.getElementById('btn-crear');
@@ -455,8 +508,10 @@ async function crearLiga() {
 
   try {
     // 1. Crear la liga
+    // Crear la liga primero (sin logo aún, para tener el id)
     const liga = await lpSaveLiga({
       nombre:     document.getElementById('f1-nombre').value.trim(),
+      club_nombre: document.getElementById('f1-club-nombre').value.trim() || null,
       categoria:  cselGetValue('f1-categoria-csel'),
       categoria_edad: cselGetValue('f1-edad-csel'),
       temporada:  document.getElementById('f1-temporada').value.trim() || null,
@@ -474,6 +529,14 @@ async function crearLiga() {
       material_entrega: _material,
       estado:       'inscripcion',
     });
+
+    // Subir logo si hay uno seleccionado
+    if (_logoFile) {
+      try {
+        const logoUrl = await subirLogo(liga.id);
+        if (logoUrl) await lpSaveLiga({ id: liga.id, club_logo_url: logoUrl });
+      } catch(e) { console.warn('Logo no subido:', e); }
+    }
 
     // 2. Crear divisiones
     await Promise.all(_divisiones.map((d, i) =>
@@ -593,6 +656,17 @@ async function init() {
       document.getElementById('f1-cuota').value     = liga.cuota_inscripcion || '';
       document.getElementById('f1-ida-vuelta').value = liga.ida_vuelta ? 'true' : 'false';
 
+      // Club nombre y logo
+      document.getElementById('f1-club-nombre').value = liga.club_nombre || '';
+      if (liga.club_logo_url) {
+        document.getElementById('f1-logo-preview').src = liga.club_logo_url;
+        document.getElementById('f1-logo-preview').style.display = 'block';
+        document.getElementById('f1-logo-placeholder').style.display = 'none';
+        document.getElementById('f1-logo-wrap').style.borderStyle = 'solid';
+        document.getElementById('f1-logo-wrap').style.borderColor = 'var(--verde)';
+        document.getElementById('f1-logo-estado').textContent = 'Logo guardado ✓';
+      }
+
       // Actualizar botones visuales ida/vuelta
       document.querySelectorAll('.ida-btn').forEach(b => b.classList.toggle('on', b.dataset.val === (liga.ida_vuelta ? 'true' : 'false')));
 
@@ -633,9 +707,16 @@ async function guardarEdicion(ligaId) {
     const formatoVal = cselGetValue('f1-formato-csel') === 'Americano' ? 'americano' : 'round_robin';
     const setsVal = cselGetValue('f1-sets-csel');
     const setsMap = { 'Mejor de 3 + STB':'mejor_3_stb', 'Mejor de 3':'mejor_3', 'Pro-set 10 games':'1' };
+    // Subir logo si hay uno nuevo
+    let logoUrl = null;
+    if (_logoFile) {
+      try { logoUrl = await subirLogo(ligaId); } catch(e) { console.warn('Logo no subido:', e); }
+    }
     await lpSaveLiga({
       id: ligaId,
       nombre:     document.getElementById('f1-nombre').value.trim(),
+      club_nombre: document.getElementById('f1-club-nombre').value.trim() || null,
+      ...(logoUrl ? { club_logo_url: logoUrl } : {}),
       categoria:  cselGetValue('f1-categoria-csel'),
       categoria_edad: cselGetValue('f1-edad-csel'),
       temporada:  document.getElementById('f1-temporada').value.trim() || null,

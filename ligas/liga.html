@@ -231,7 +231,7 @@
       <div style="font-size:10px;font-weight:900;color:var(--sutil);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Vista previa</div>
       <div class="pub-preview" id="pub-preview-wrap">
         <div class="pub-prev-title" id="pub-prev-nombre">—</div>
-        <div class="pub-prev-sub"   id="pub-prev-sub">—</div>
+        <div class="pub-prev-sub"   id="pub-prev-sub" style="display:none"></div>
         <div style="font-size:10px;font-weight:900;color:#fff;margin-bottom:5px;text-transform:uppercase;letter-spacing:.4px">Clasificación:</div>
         <table class="pub-tbl" id="pub-prev-tbl">
           <thead><tr><th style="width:22px">#</th><th>Jugador/Pareja</th><th>PTS</th><th>G</th><th>P</th></tr></thead>
@@ -239,7 +239,7 @@
         </table>
         <div style="font-size:10px;font-weight:900;color:#fff;margin:10px 0 5px;text-transform:uppercase;letter-spacing:.4px">Resultados recientes:</div>
         <div id="pub-prev-resultados"></div>
-        <div style="font-size:9px;color:#93c5fd;text-align:center;margin-top:8px;font-weight:700">Powered by LigaPádel</div>
+
       </div>
       <button class="btn" style="width:100%;background:#25d366;border-color:#25d366;color:#fff;margin-bottom:7px" onclick="compartirWA()">📱 Compartir por WhatsApp</button>
       <button class="btn pr" style="width:100%" onclick="descargarImagenPDF()">⬇️ Descargar imagen + PDF</button>
@@ -1101,8 +1101,35 @@ function renderPreviewPublicacion() {
   const divId = document.getElementById('pub-division').value;
   const titulo = document.getElementById('pub-titulo').value.trim() || _liga?.nombre || '—';
 
-  document.getElementById('pub-prev-nombre').textContent = _liga?.nombre || '—';
-  document.getElementById('pub-prev-sub').textContent    = titulo;
+  // Nombre y logo del club en la cabecera de publicación
+  const clubNombre = _liga?.club_nombre || _liga?.nombre || '—';
+  const clubLogo   = _liga?.club_logo_url || null;
+  const prevTitulo = document.getElementById('pub-prev-nombre');
+  prevTitulo.textContent = clubNombre;
+
+  // Logo en preview si existe
+  let logoEl = document.getElementById('pub-prev-logo');
+  if (clubLogo) {
+    if (!logoEl) {
+      logoEl = document.createElement('img');
+      logoEl.id = 'pub-prev-logo';
+      logoEl.style.cssText = 'width:40px;height:40px;border-radius:8px;object-fit:cover;display:block;margin:0 auto 6px';
+      prevTitulo.parentNode.insertBefore(logoEl, prevTitulo);
+    }
+    logoEl.src = clubLogo;
+  } else if (logoEl) {
+    logoEl.remove();
+  }
+
+  // Subtítulo: nombre de la liga si es diferente al nombre del club
+  const subEl = document.getElementById('pub-prev-sub');
+  const subTexto = titulo && titulo !== clubNombre ? titulo : (_liga?.nombre !== clubNombre ? _liga?.nombre : '');
+  if (subTexto) {
+    subEl.textContent = subTexto;
+    subEl.style.display = 'block';
+  } else {
+    subEl.style.display = 'none';
+  }
 
   const parejas = divId
     ? _parejas.filter(p => p.division_id === divId)
@@ -1125,7 +1152,10 @@ function renderPreviewPublicacion() {
 
 async function compartirWA() {
   const titulo = document.getElementById('pub-titulo').value.trim() || _liga?.nombre || '';
-  let texto = `🎾 *${_liga?.nombre || 'LigaPádel'}*\n_${titulo}_\n\n`;
+  const clubNombreWA = _liga?.club_nombre || _liga?.nombre || 'LigaPádel';
+  const ligaNombreWA = _liga?.nombre || '';
+  const subtituloWA  = titulo && titulo !== clubNombreWA ? titulo : (ligaNombreWA !== clubNombreWA ? ligaNombreWA : '');
+  let texto = `🎾 *${clubNombreWA}*${subtituloWA ? '\n_' + subtituloWA + '_' : ''}\n\n`;
   texto += `*CLASIFICACIÓN*\n`;
   const sorted = [..._parejas].sort((a,b) => b.pts - a.pts).slice(0,8);
   sorted.forEach((p,i) => {

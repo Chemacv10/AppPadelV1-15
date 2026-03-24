@@ -26,7 +26,6 @@ const MODULOS = [
   { id: 'ejercicios',  label: 'Ejercicios', href: 'ejercicios.html',  icon: 'icons/ejercicios.png'  },
   { id: 'clases',      label: 'Clases',     href: 'clases.html',      icon: 'icons/clases.png'      },
   { id: 'torneos',     label: 'Torneos',    href: 'torneos.html',     icon: 'icons/torneos.png'     },
-  { id: 'ligas',       label: 'Ligas',      href: 'ligas/index.html', icon: 'icons/ligas.png'       },
-  { id: 'stats',       label: 'Estadíst.',  href: 'stats.html',       icon: 'icons/stats.png'       },
+  { id: 'stats',       label: 'Estadíst.',      href: 'stats.html',       icon: 'icons/stats.png'       },
   { id: 'pistas',      label: 'Pistas',     href: 'pistas.html',      icon: 'icons/pistas.png'      },
 ];

@@ -606,6 +606,17 @@ async function init() {
       cselSetValue('f1-sets-csel', setsMap[liga.sets_partido] || liga.sets_partido || 'Mejor de 3 + STB');
 
       document.getElementById('wrap-puntuacion').style.display = liga.formato === 'americano' ? 'none' : 'block';
+
+      // Ocultar wizard de pasos y fases 2/3/4 — en edición solo se modifican datos básicos
+      document.getElementById('wizard-steps').style.display = 'none';
+      document.getElementById('fase-2').style.display = 'none';
+      document.getElementById('fase-3').style.display = 'none';
+      document.getElementById('fase-4').style.display = 'none';
+      // Mover botón guardar al paso 1 directamente
+      const btnFase1 = document.querySelector('#fase-1 .sheet-btns');
+      if (btnFase1) {
+        btnFase1.innerHTML = `<button class="sbtn prim" id="btn-crear" style="flex:1" onclick="guardarEdicion('${editId}')">✓ Guardar cambios</button>`;
+      }
     } catch(e) {
       toast('Error al cargar la liga: ' + (e.message || e), 'err');
       console.error(e);

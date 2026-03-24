@@ -143,7 +143,7 @@
     </div>
 
     <!-- ══ CLASIFICACIÓN ══ -->
-    <div class="ltab-content on" id="tab-clasificacion">
+    <div class="ltab-content" id="tab-clasificacion">
       <div class="div-tabs" id="div-tabs-clas"></div>
       <div class="leyenda">
         <div class="ley-item"><div class="ley-dot" style="background:#16a34a"></div>Asciende directo</div>
@@ -247,21 +247,30 @@
 
     <!-- ══ NORMATIVA ══ -->
     <div class="ltab-content" id="tab-normativa">
-      <div class="fgrp"><div class="flbl">Título</div><input class="finp" id="norm-titulo" placeholder="Normativa de la liga"></div>
-      <div class="fgrp"><div class="flbl">Horario de juego</div><input class="finp" id="norm-horario" placeholder="Vie 17-22h · Sáb 10-21h · Dom 10-21h"></div>
-      <div class="frow">
-        <div class="fgrp"><div class="flbl">Aplazamientos máx.</div><input class="finp" id="norm-aplaz" type="number" value="5"></div>
-        <div class="fgrp"><div class="flbl">WO tras (min)</div><input class="finp" id="norm-wo" type="number" value="15"></div>
-      </div>
-      <div class="fgrp"><div class="flbl">Texto libre</div><textarea class="finp" id="norm-texto" rows="6" style="resize:none;line-height:1.5"></textarea></div>
-      <button class="btn pr" style="width:100%;margin-top:4px" onclick="guardarNormativa()">Guardar normativa</button>
 
-      <div style="margin-top:16px">
-        <div style="font-size:10px;font-weight:900;color:var(--sutil);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Página pública</div>
-        <div style="background:#eff6ff;border:1.5px solid #bfdbfe;border-radius:12px;padding:10px 13px;font-size:11px;font-weight:800;color:#1e40af;margin-bottom:8px;word-break:break-all" id="url-publica-display">—</div>
-        <button class="btn" style="width:100%;margin-bottom:7px" onclick="copiarUrlPublica()">Copiar enlace</button>
-        <button class="btn" style="width:100%;background:#25d366;border-color:#25d366;color:#fff" onclick="compartirUrlWA()">📱 Compartir por WhatsApp</button>
+      <!-- Estado actual del PDF -->
+      <div id="norm-pdf-estado" style="margin-bottom:14px"></div>
+
+      <!-- Zona de subida -->
+      <div id="norm-upload-zona" style="border:2px dashed var(--borde);border-radius:14px;padding:20px;text-align:center;cursor:pointer;background:#f8fafc;transition:all .15s"
+           onclick="document.getElementById('norm-pdf-input').click()"
+           ondragover="event.preventDefault();this.style.borderColor='var(--azul)'"
+           ondragleave="this.style.borderColor='var(--borde)'"
+           ondrop="normOnDrop(event)">
+        <div style="font-size:28px;margin-bottom:6px">📄</div>
+        <div style="font-size:13px;font-weight:800;color:var(--texto);margin-bottom:3px">Subir PDF de normativa</div>
+        <div style="font-size:11px;font-weight:600;color:var(--sutil)">Toca para seleccionar · máx. 10 MB</div>
+        <input type="file" id="norm-pdf-input" accept="application/pdf" style="display:none" onchange="normSubirPDF(this.files[0])">
       </div>
+
+      <!-- Barra de progreso -->
+      <div id="norm-progress-wrap" style="display:none;margin-top:10px">
+        <div style="background:#e2e8f0;border-radius:100px;height:6px;overflow:hidden">
+          <div id="norm-progress-bar" style="height:100%;background:var(--azul);width:0%;transition:width .3s;border-radius:100px"></div>
+        </div>
+        <div id="norm-progress-txt" style="font-size:11px;font-weight:700;color:var(--sutil);text-align:center;margin-top:5px">Subiendo…</div>
+      </div>
+
     </div>
 
   </main>
@@ -654,7 +663,7 @@ function renderCalendario() {
   }
   el.innerHTML = _jornadas.map(j => {
     const pj = _partidos.filter(p => p.jornada_id === j.id);
-    const jugados  = pj.filter(p => p.estado === 'jugado' || p.estado.startsWith('wo')).length;
+    const jugados  = pj.filter(p => p.estado === 'jugado' || (p.estado||'').startsWith('wo')).length;
     const pendientes = pj.filter(p => p.estado === 'pendiente').length;
     const tipoLabel = j.tipo === 'recuperacion' ? '🔄 Recuperación' : `${j.numero}ª Jornada`;
     const borde = j.estado === 'en_curso' ? 'border-left:3px solid var(--azul);border-radius:0 14px 14px 0' : '';
@@ -675,7 +684,7 @@ function renderCalendario() {
         const pb = p.pareja_b?.nombre1 || '—';
         const score = p.estado === 'jugado'
           ? `<span class="partido-score ps-win">${formatScore(p)}</span>`
-          : p.estado.startsWith('wo')
+          : (p.estado||'').startsWith('wo')
             ? `<span class="partido-score ps-wo">WO</span>`
             : `<span class="partido-score ps-pend">Pendiente</span>`;
         return `<div class="partido-card" style="margin-bottom:5px">
@@ -712,9 +721,9 @@ function renderResultados() {
     const jornada = _jornadas.find(j => j.id === p.jornada_id);
     const pa = p.pareja_a?.nombre1 || '—';
     const pb = p.pareja_b?.nombre1 || '—';
-    const jugado = p.estado === 'jugado' || p.estado.startsWith('wo');
+    const jugado = p.estado === 'jugado' || (p.estado||'').startsWith('wo');
     const score  = jugado ? formatScore(p) : 'Pendiente';
-    const scoreCls = p.estado === 'jugado' ? 'ps-win' : p.estado.startsWith('wo') ? 'ps-wo' : 'ps-pend';
+    const scoreCls = p.estado === 'jugado' ? 'ps-win' : (p.estado||'').startsWith('wo') ? 'ps-wo' : 'ps-pend';
 
     return `<div class="partido-card" onclick="abrirResultado('${p.id}')">
       <div class="partido-hdr">
@@ -732,7 +741,7 @@ function renderResultados() {
 }
 
 function formatScore(p) {
-  if (!p || p.estado.startsWith('wo')) return 'WO';
+  if (!p || (p.estado||'').startsWith('wo')) return 'WO';
   const sets = [];
   if (p.s1a != null && p.s1b != null) sets.push(`${p.s1a}/${p.s1b}`);
   if (p.s2a != null && p.s2b != null) sets.push(`${p.s2a}/${p.s2b}`);
@@ -933,9 +942,10 @@ function seleccionarJugador(n, id, nombre, nivel, bg, ini) {
 
 function limpiarJugador(n) {
   document.getElementById(`par-jug${n}-id`).value = '';
-  const bloque = document.querySelector(`#sh-pareja .sheet > div:nth-child(${n===1?4:5}) .fgrp`);
-  // Re-render the search field
-  const wrap = document.querySelector(`#sh-pareja .sheet > div:nth-child(${n===1?4:5})`).querySelector('.fgrp');
+  // Buscar el fgrp que contiene el input o el bloque de jugador seleccionado
+  const bloqueId = n === 1 ? 'jug1-wrap' : 'jug2-wrap';
+  const wrap = document.getElementById(bloqueId);
+  if (!wrap) return;
   wrap.innerHTML = `
     <div class="flbl">Buscar en el club</div>
     <input class="finp" id="par-busq${n}" placeholder="Nombre del jugador..." oninput="buscarJugador(${n})" autocomplete="off">
@@ -1136,39 +1146,104 @@ function descargarImagenPDF() {
   toast('Generando documento… (próximamente)', 'ok');
 }
 
-// ── Normativa ─────────────────────────────────────────────────
+// ── Normativa / PDF ───────────────────────────────────────────
 function renderNormativa() {
-  if (!_normativa) return;
-  document.getElementById('norm-titulo').value  = _normativa.titulo || '';
-  document.getElementById('norm-horario').value = _normativa.horario_juego || '';
-  document.getElementById('norm-texto').value   = _normativa.texto_libre || '';
+  const estadoEl = document.getElementById('norm-pdf-estado');
+  if (!estadoEl) return;
 
-  const urlBase = 'ligapadel.app';
-  const urlPub  = _liga?.url_publica ? `https://${urlBase}/${_liga.url_publica}` : '(sin URL pública configurada)';
-  document.getElementById('url-publica-display').textContent = urlPub;
+  const pdfUrl = _normativa?.pdf_url;
+  if (pdfUrl) {
+    const nombre = decodeURIComponent(pdfUrl.split('/').pop().split('?')[0]) || 'normativa.pdf';
+    estadoEl.innerHTML = `
+      <div style="background:#f0fdf4;border:1.5px solid #86efac;border-radius:14px;padding:12px 14px">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+          <div style="font-size:24px;flex-shrink:0">📄</div>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:12px;font-weight:800;color:#15803d;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${nombre}</div>
+            <div style="font-size:10px;font-weight:600;color:#16a34a;margin-top:2px">PDF subido ✓</div>
+          </div>
+          <button onclick="normEliminarPDF()" style="background:#fee2e2;border:none;border-radius:8px;padding:5px 9px;font-size:11px;font-weight:800;color:#dc2626;cursor:pointer">✕ Eliminar</button>
+        </div>
+        <div style="display:flex;gap:7px">
+          <a href="${pdfUrl}" target="_blank" class="btn" style="flex:1;text-decoration:none;padding:9px;font-size:11px;justify-content:center">👁 Ver PDF</a>
+          <button class="btn" style="flex:1;background:#25d366;border-color:#25d366;color:#fff;padding:9px;font-size:11px" onclick="normCompartirWA('${pdfUrl}')">📱 WhatsApp</button>
+          <button class="btn" style="flex:1;padding:9px;font-size:11px" onclick="normCopiarUrl('${pdfUrl}')">🔗 Copiar</button>
+        </div>
+      </div>`;
+  } else {
+    estadoEl.innerHTML = '';
+  }
 }
 
-async function guardarNormativa() {
+function normOnDrop(e) {
+  e.preventDefault();
+  document.getElementById('norm-upload-zona').style.borderColor = 'var(--borde)';
+  const file = e.dataTransfer?.files?.[0];
+  if (file?.type === 'application/pdf') normSubirPDF(file);
+  else toast('Solo se admiten archivos PDF', 'warn');
+}
+
+async function normSubirPDF(file) {
+  if (!file) return;
+  if (file.type !== 'application/pdf') { toast('Solo archivos PDF', 'warn'); return; }
+  if (file.size > 10 * 1024 * 1024)   { toast('El PDF no puede superar 10 MB', 'warn'); return; }
+
+  const progressWrap = document.getElementById('norm-progress-wrap');
+  const progressBar  = document.getElementById('norm-progress-bar');
+  const progressTxt  = document.getElementById('norm-progress-txt');
+  progressWrap.style.display = 'block';
+  progressBar.style.width    = '30%';
+  progressTxt.textContent    = 'Subiendo…';
+
   try {
-    await lpSaveNormativa({
-      liga_id:       _ligaId,
-      titulo:        document.getElementById('norm-titulo').value.trim() || null,
-      horario_juego: document.getElementById('norm-horario').value.trim() || null,
-      texto_libre:   document.getElementById('norm-texto').value.trim() || null,
-    });
-    toast('Normativa guardada ✓', 'ok');
+    const ext      = 'pdf';
+    const path     = `${LP.orgId}/${_ligaId}/normativa.${ext}`;
+    const { data, error } = await _sb.storage
+      .from('normativa')
+      .upload(path, file, { upsert: true, contentType: 'application/pdf' });
+
+    if (error) throw error;
+
+    progressBar.style.width = '70%';
+
+    const { data: urlData } = _sb.storage.from('normativa').getPublicUrl(path);
+    const publicUrl = urlData.publicUrl;
+
+    await lpSaveNormativa({ liga_id: _ligaId, pdf_url: publicUrl });
     _normativa = await lpGetNormativa(_ligaId);
-  } catch(e) { toast('Error', 'err'); }
+
+    progressBar.style.width = '100%';
+    progressTxt.textContent = '✓ Subido';
+    setTimeout(() => { progressWrap.style.display = 'none'; }, 800);
+
+    renderNormativa();
+    toast('PDF subido correctamente ✓', 'ok');
+  } catch(e) {
+    progressWrap.style.display = 'none';
+    toast('Error al subir: ' + (e.message || e), 'err');
+    console.error(e);
+  }
 }
 
-function copiarUrlPublica() {
-  const url = document.getElementById('url-publica-display').textContent;
-  navigator.clipboard.writeText(url).then(() => toast('URL copiada ✓', 'ok'));
+async function normEliminarPDF() {
+  if (!confirm('¿Eliminar el PDF de normativa?')) return;
+  try {
+    const path = `${LP.orgId}/${_ligaId}/normativa.pdf`;
+    await _sb.storage.from('normativa').remove([path]);
+    await lpSaveNormativa({ liga_id: _ligaId, pdf_url: null });
+    _normativa = await lpGetNormativa(_ligaId);
+    renderNormativa();
+    toast('PDF eliminado', 'ok');
+  } catch(e) { toast('Error al eliminar', 'err'); }
 }
 
-function compartirUrlWA() {
-  const url = document.getElementById('url-publica-display').textContent;
-  window.open('https://wa.me/?text=' + encodeURIComponent(`Consulta la clasificación y el calendario:\n${url}`));
+function normCompartirWA(url) {
+  const texto = `📄 Normativa — ${_liga?.nombre || 'Liga'}\n${url}`;
+  window.open('https://wa.me/?text=' + encodeURIComponent(texto));
+}
+
+function normCopiarUrl(url) {
+  navigator.clipboard.writeText(url).then(() => toast('Enlace copiado ✓', 'ok'));
 }
 
 function exportarCalendarioPDF() { toast('PDF próximamente', 'ok'); }

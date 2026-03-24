@@ -484,7 +484,7 @@ async function confirmarCierre() {
 
 // ── Init ──────────────────────────────────────────────────────
 async function init() {
-  if (!_ligaId) { window.location.href = 'index.html'; return; }
+  if (!_ligaId) { window.location.href = '../ligas/index.html'; return; }
 
   // Renderizar nav y header básico inmediatamente
   renderHeader({
@@ -492,7 +492,7 @@ async function init() {
     subtitulo:    'Cargando...',
     icono:        'icons/inscripciones.png',
     botonDerecho: 'back',
-    onBack:       'index.html',
+    onBack: '../ligas/index.html',
   });
   renderNav('ligas');
 
@@ -528,7 +528,7 @@ async function init() {
     subtitulo:    'Inscripciones · ' + (_parejas?.length || 0) + ' parejas',
     icono:        'icons/inscripciones.png',
     botonDerecho: 'back',
-    onBack:       'index.html',
+    onBack: '../ligas/index.html',
   });
 
   // Poblar filtro divisiones

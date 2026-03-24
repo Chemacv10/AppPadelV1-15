@@ -86,7 +86,7 @@
       <div id="slots-lista"></div>
       <button class="btn" style="width:100%;margin-bottom:16px" onclick="addSlot()">+ Añadir franja horaria</button>
       <div class="sheet-btns">
-        <button class="sbtn" onclick="window.location.href='inscripciones.html?id='+_ligaId">← Volver</button>
+        <button class="sbtn" onclick="window.location.href='../ligas/inscripciones.html?id='+_ligaId">← Volver</button>
         <button class="sbtn prim" onclick="irFase(2)">Siguiente →</button>
       </div>
     </div>
@@ -448,14 +448,14 @@ async function actualizarJornadas() {
 
 // ── Init ──────────────────────────────────────────────────────
 async function init() {
-  if (!_ligaId) { window.location.href = 'index.html'; return; }
+  if (!_ligaId) { window.location.href = '../ligas/index.html'; return; }
 
   renderHeader({
     titulo:       'Calendario',
     subtitulo:    'Cargando…',
     icono:        'icons/calendario.png',
     botonDerecho: 'back',
-    onBack:       'index.html',
+    onBack: '../ligas/index.html',
   });
   renderNav('ligas');
 
@@ -503,7 +503,7 @@ async function init() {
       subtitulo:    'Calendario',
       icono:        'icons/calendario.png',
       botonDerecho: 'back',
-      onBack:       'index.html',
+      onBack: '../ligas/index.html',
     });
 
     renderSlots();

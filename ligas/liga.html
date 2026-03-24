@@ -96,6 +96,17 @@
 
     .ley-item { display:flex; align-items:center; gap:4px; font-size:10px; font-weight:700; color:var(--sutil); }
     .ley-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+
+    /* ── Botones de sección ── */
+    .sec-btn {
+      flex:1; display:flex; align-items:center; justify-content:center; gap:5px;
+      padding:8px 4px; border-radius:10px; border:1.5px solid var(--borde);
+      background:#f8fafc; cursor:pointer; font-family:Nunito,sans-serif;
+      font-size:10px; font-weight:800; color:var(--sub); white-space:nowrap;
+      transition:all .15s;
+    }
+    .sec-btn:hover { background:#f1f5f9; }
+    .sec-btn.on { border-color:var(--azul); background:#eff6ff; color:var(--azul); }
   </style>
 </head>
 <body>
@@ -104,18 +115,32 @@
   <div id="header-container"></div>
   <nav id="nav-container"></nav>
 
-  <!-- Tabs -->
-  <div class="liga-tabs" id="liga-tabs">
-    <div class="ltab on"  onclick="showTab('clasificacion')">Clasificación</div>
-    <div class="ltab"     onclick="showTab('participantes')">Jugadores</div>
-    <div class="ltab"     onclick="showTab('calendario')">Calendario</div>
-    <div class="ltab"     onclick="showTab('resultados')">Resultados</div>
-    <div class="ltab"     onclick="showTab('material')">Material</div>
-    <div class="ltab"     onclick="showTab('publicacion')">Publicar</div>
-    <div class="ltab"     onclick="showTab('normativa')">Normativa</div>
+  <!-- Subtítulo liga -->
+  <div id="liga-subtitulo-wrap" style="background:#fff;padding:8px 14px 10px;border-bottom:1.5px solid var(--borde);flex-shrink:0">
+    <div id="liga-subtitulo-nombre" style="font-size:15px;font-weight:900;color:var(--texto)">—</div>
+    <div id="liga-subtitulo-meta" style="font-size:11px;font-weight:600;color:var(--sub);margin-top:2px">—</div>
+  </div>
+
+  <!-- Botones de sección rectangulares — 2 filas de 3 -->
+  <div id="secciones-wrap" style="background:#fff;padding:7px 10px 8px;border-bottom:1.5px solid var(--borde);display:flex;flex-direction:column;gap:5px;flex-shrink:0">
+    <div style="display:flex;gap:5px">
+      <button class="sec-btn" id="sbtn-bases"          onclick="showTab('bases')">📋 Bases</button>
+      <button class="sec-btn" id="sbtn-participantes"  onclick="showTab('participantes')">👥 Inscripciones</button>
+      <button class="sec-btn" id="sbtn-calendario"     onclick="showTab('calendario')">📅 Calendario</button>
+    </div>
+    <div style="display:flex;gap:5px">
+      <button class="sec-btn" id="sbtn-resultados"     onclick="showTab('resultados')">🏓 Resultados</button>
+      <button class="sec-btn" id="sbtn-clasificacion"  onclick="showTab('clasificacion')">📊 Clasificación</button>
+      <button class="sec-btn" id="sbtn-publicacion"    onclick="showTab('publicacion')">💬 Publicar</button>
+    </div>
   </div>
 
   <main style="overflow-y:auto;flex:1;padding-bottom:80px">
+
+    <!-- ══ BASES ══ -->
+    <div class="ltab-content on" id="tab-bases">
+      <div id="bases-content" style="padding:4px 0"></div>
+    </div>
 
     <!-- ══ CLASIFICACIÓN ══ -->
     <div class="ltab-content on" id="tab-clasificacion">
@@ -367,7 +392,7 @@
 
 const params   = new URLSearchParams(location.search);
 const _ligaId  = params.get('id');
-const _tabIni  = params.get('tab') || 'clasificacion';
+const _tabIni  = params.get('tab') || 'bases';
 
 let _liga       = null;
 let _divisiones = [];
@@ -381,9 +406,11 @@ let _partidoSel = null;   // partido abierto en sheet resultado
 
 // ── Tabs ──────────────────────────────────────────────────────
 function showTab(tab) {
-  document.querySelectorAll('.ltab').forEach((t, i) => {
-    const ids = ['clasificacion','participantes','calendario','resultados','material','publicacion','normativa'];
-    t.classList.toggle('on', ids[i] === tab);
+  // Actualizar botones de sección
+  const btnIds = ['bases','participantes','calendario','resultados','clasificacion','publicacion'];
+  btnIds.forEach(id => {
+    const btn = document.getElementById('sbtn-' + id);
+    if (btn) btn.classList.toggle('on', id === tab);
   });
   document.querySelectorAll('.ltab-content').forEach(c => c.classList.remove('on'));
   document.getElementById('tab-' + tab)?.classList.add('on');
@@ -392,6 +419,7 @@ function showTab(tab) {
   const fabMap = { participantes: true, resultados: true };
   document.getElementById('fab-btn').style.display = fabMap[tab] ? 'flex' : 'none';
 
+  if (tab === 'bases')         renderBases();
   if (tab === 'clasificacion') renderClasificacion();
   if (tab === 'participantes') renderParticipantes();
   if (tab === 'calendario')    renderCalendario();
@@ -402,9 +430,39 @@ function showTab(tab) {
 }
 
 function onFabClick() {
-  const tabOn = document.querySelector('.ltab.on')?.textContent;
-  if (tabOn === 'Jugadores') abrirSheetPareja(null);
-  if (tabOn === 'Resultados') abrirSiguienteResultado();
+  const tabOn = document.querySelector('.sec-btn.on')?.textContent?.trim();
+  if (tabOn?.includes('Inscrip')) abrirSheetPareja(null);
+  if (tabOn?.includes('Resultado')) abrirSiguienteResultado();
+}
+
+// ── Bases ─────────────────────────────────────────────────────
+function renderBases() {
+  const el = document.getElementById('bases-content');
+  if (!el || !_liga) return;
+  const estados = { borrador:'Borrador', inscripcion:'Inscripción abierta', activa:'Activa', fase_final:'Fase final', finalizada:'Finalizada' };
+  const sets = { mejor_3:'Al mejor de 3', mejor_3_stb:'Mejor de 3 + STB', 1:'1 set', tiebreak:'Tiebreak' };
+  const campo = (lbl, val) => `<div style="margin-bottom:8px">
+    <div style="font-size:10px;font-weight:900;color:var(--sutil);text-transform:uppercase;letter-spacing:.4px;margin-bottom:3px">${lbl}</div>
+    <div style="font-size:13px;font-weight:700;color:var(--texto);background:#fff;border:1.5px solid var(--borde);border-radius:10px;padding:8px 12px">${val||'—'}</div>
+  </div>`;
+  const campo2 = (items) => `<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:0">${items.map(([l,v]) => campo(l,v)).join('')}</div>`;
+
+  el.innerHTML = `
+    ${campo2([['Categoría', _liga.categoria], ['Edad', _liga.categoria_edad||'Absoluto']])}
+    ${campo2([['Formato', _liga.formato], ['Ida y vuelta', _liga.ida_vuelta ? 'Sí' : 'Solo ida']])}
+    ${campo2([['Sets', sets[_liga.sets_partido]||_liga.sets_partido], ['Duración partido', (_liga.duracion_partido||90) + ' min']])}
+    ${campo(_liga.temporada ? 'Temporada' : '', _liga.temporada)}
+    ${campo2([['Victoria', (_liga.pts_victoria||2) + ' pts'], ['Derrota', (_liga.pts_derrota||1) + ' pts']])}
+    ${_liga.cuota_inscripcion ? campo('Cuota inscripción', _liga.cuota_inscripcion + ' €') : ''}
+    <div style="display:flex;gap:8px;margin-top:12px">
+      <button class="btn pr" style="flex:1;padding:10px;font-size:12px" onclick="abrirEditarLiga()">✏️ Editar</button>
+      <button class="btn" style="flex:1;padding:10px;font-size:12px" onclick="showTab('normativa')">📄 Normativa</button>
+    </div>
+  `;
+}
+
+function abrirEditarLiga() {
+  window.location.href = `../ligas/nueva-liga.html?edit=${_ligaId}`;
 }
 
 // ── Clasificación ─────────────────────────────────────────────
@@ -1153,19 +1211,28 @@ async function cargar() {
 
 // ── Init ───────────────────────────────────────────────────────
 async function init() {
-  if (!_ligaId) { window.location.href = 'index.html'; return; }
+  if (!_ligaId) { window.location.href = '../ligas/index.html'; return; }
 
   const ok = await lpInit(); if (!ok) return;
   await cargar();
 
   renderHeader({
-    titulo:      _liga.nombre,
-    subtitulo:   [_liga.categoria, _liga.temporada].filter(Boolean).join(' · '),
-    icono:       'icons/ligas.png',
+    subtitulo:   'Gestión de ligas',
     botonDerecho: 'back',
-    onBack:      'index.html',
+    onBack:      '../ligas/index.html',
   });
   renderNav('ligas');
+
+  // Subtítulo con nombre de la liga
+  const subNombre = document.getElementById('liga-subtitulo-nombre');
+  const subMeta   = document.getElementById('liga-subtitulo-meta');
+  if (subNombre) subNombre.textContent = _liga.nombre || '—';
+  if (subMeta) {
+    const estados = { borrador:'Borrador', inscripcion:'Inscripción abierta', activa:'Activa', fase_final:'Fase final', finalizada:'Finalizada' };
+    const partes = [_liga.categoria, _liga.categoria_edad, estados[_liga.estado]].filter(Boolean);
+    if (_liga.lp_parejas?.length) partes.push(_liga.lp_parejas.length + ' parejas');
+    subMeta.textContent = partes.join(' · ');
+  }
 
   showTab(_tabIni);
 }

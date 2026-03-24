@@ -185,7 +185,7 @@ async function eliminarLiga(id, nombre) {
 
 async function init() {
   renderHeader({ subtitulo:'Gestión de ligas', botonDerecho: null });
-  renderNav('ligas');
+  renderNav('inicio');
   const ok = await lpInit(); if (!ok) return;
   await lpGetOrganizador();
   showLoading('ligas-wrap');

@@ -207,8 +207,8 @@
       </div>
 
       <div class="contador-semanas" id="contador-semanas" style="display:none">
-        <div class="cnt-item"><div class="cnt-v azul" id="cnt-jornadas">0</div><div class="cnt-l">Jornadas</div></div>
-        <div class="cnt-item"><div class="cnt-v verde" id="cnt-recuperacion">0</div><div class="cnt-l">Recuperación</div></div>
+        <div class="cnt-item"><div class="cnt-v azul" id="cnt-jornadas">0</div><div class="cnt-l">Jornadas ✓</div></div>
+        <div class="cnt-item"><div class="cnt-v verde" id="cnt-recuperacion">0</div><div class="cnt-l">Recup. ✓</div></div>
         <div class="cnt-item"><div class="cnt-v" id="cnt-necesarias" style="color:var(--sutil)">—</div><div class="cnt-l">Necesarias</div></div>
       </div>
 
@@ -421,6 +421,13 @@ function generarSemanas() {
   renderSemanas();
 }
 
+// Festivos conocidos España (mes-día)
+const _FESTIVOS_ES = ['01-01','01-06','05-01','08-15','10-12','11-01','12-06','12-08','12-25'];
+function esFestivo(date) {
+  const md = (date.getMonth()+1).toString().padStart(2,'0') + '-' + date.getDate().toString().padStart(2,'0');
+  return _FESTIVOS_ES.includes(md);
+}
+
 function renderSemanas() {
   const el = document.getElementById('semanas-lista');
   if (!_semanas.length) { el.innerHTML = ''; document.getElementById('contador-semanas').style.display = 'none'; return; }
@@ -428,23 +435,36 @@ function renderSemanas() {
   document.getElementById('contador-semanas').style.display = 'flex';
   actualizarContador();
 
+  let numJ = 0, numR = 0;
   el.innerHTML = _semanas.map((s, i) => {
-    const clsItem = s.tipo === 'jornada' ? 'sel-jornada' : s.tipo === 'recuperacion' ? 'sel-recuperacion' : '';
+    const esFest = esFestivo(s.ini) || esFestivo(s.fin);
+    if (s.tipo === 'jornada') numJ++;
+    else if (s.tipo === 'recuperacion') numR++;
+
     const numLabel = s.tipo === 'jornada'
-      ? `<span style="font-size:11px;font-weight:900;color:var(--azul)">J${_semanas.slice(0,i+1).filter(x=>x.tipo==='jornada').length}</span>`
+      ? `<span style="font-size:11px;font-weight:900;color:var(--azul)">J${numJ}</span>`
       : s.tipo === 'recuperacion'
-        ? `<span style="font-size:11px;font-weight:900;color:var(--verde)">Rec.</span>`
+        ? `<span style="font-size:11px;font-weight:900;color:var(--verde)">R${numR}</span>`
         : `<span style="font-size:11px;font-weight:700;color:#94a3b8">—</span>`;
-    return `
-    <div class="semana-item ${clsItem}" id="semana-${i}">
-      <div style="min-width:32px;text-align:center">${numLabel}</div>
-      <div style="flex:1">
-        <div style="font-size:12px;font-weight:800;color:var(--texto)">${s.label}</div>
+
+    const festBadge = esFest
+      ? `<span style="font-size:9px;font-weight:800;color:#dc2626;background:#fee2e2;border-radius:6px;padding:1px 5px;margin-left:4px">Festivo</span>`
+      : '';
+
+    const bordeColor = s.tipo === 'jornada' ? 'var(--azul)' : s.tipo === 'recuperacion' ? 'var(--verde)' : esFest ? '#fca5a5' : '#e2e8f0';
+    const bgColor    = s.tipo === 'jornada' ? '#eff6ff' : s.tipo === 'recuperacion' ? '#f0fdf4' : esFest ? '#fff5f5' : '#f8fafc';
+
+    return `<div style="display:flex;align-items:center;gap:8px;padding:9px 10px;border-radius:12px;border:1.5px solid ${bordeColor};background:${bgColor};margin-bottom:6px">
+      <div style="min-width:28px;text-align:center">${numLabel}</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:11px;font-weight:800;color:var(--texto);display:flex;align-items:center;flex-wrap:wrap;gap:2px">
+          ${s.label}${festBadge}
+        </div>
       </div>
-      <div class="semana-tipo-btns">
-        <button class="semana-tipo-btn ${s.tipo==='jornada'?'on-j':''}" onclick="setSemana(${i},'jornada')">Jornada</button>
-        <button class="semana-tipo-btn ${s.tipo==='recuperacion'?'on-r':''}" onclick="setSemana(${i},'recuperacion')">Recup.</button>
-        <button class="semana-tipo-btn ${s.tipo==='libre'?'on-s':''}" onclick="setSemana(${i},'libre')">Libre</button>
+      <div style="display:flex;gap:3px;flex-shrink:0">
+        <button style="padding:4px 7px;border-radius:7px;border:1.5px solid ${s.tipo==='jornada'?'var(--azul)':'#e2e8f0'};background:${s.tipo==='jornada'?'var(--azul)':'#fff'};color:${s.tipo==='jornada'?'#fff':'#64748b'};font-size:10px;font-weight:800;cursor:pointer;font-family:Nunito,sans-serif" onclick="setSemana(${i},'jornada')">J</button>
+        <button style="padding:4px 7px;border-radius:7px;border:1.5px solid ${s.tipo==='recuperacion'?'var(--verde)':'#e2e8f0'};background:${s.tipo==='recuperacion'?'var(--verde)':'#fff'};color:${s.tipo==='recuperacion'?'#fff':'#64748b'};font-size:10px;font-weight:800;cursor:pointer;font-family:Nunito,sans-serif" onclick="setSemana(${i},'recuperacion')">R</button>
+        <button style="padding:4px 7px;border-radius:7px;border:1.5px solid ${s.tipo==='libre'?'#94a3b8':'#e2e8f0'};background:${s.tipo==='libre'?'#f1f5f9':'#fff'};color:#64748b;font-size:10px;font-weight:800;cursor:pointer;font-family:Nunito,sans-serif" onclick="setSemana(${i},'libre')">Libre</button>
       </div>
     </div>`;
   }).join('');
@@ -458,10 +478,24 @@ function setSemana(i, tipo) {
 function actualizarContador() {
   const nJ = _semanas.filter(s => s.tipo === 'jornada').length;
   const nR = _semanas.filter(s => s.tipo === 'recuperacion').length;
-  document.getElementById('cnt-jornadas').textContent    = nJ;
-  document.getElementById('cnt-recuperacion').textContent = nR;
-  // Necesarias = jornadas round-robin para N parejas (se calculará al generar)
-  document.getElementById('cnt-necesarias').textContent  = '—';
+  // Calcular necesarias según parejas de todas las divisiones
+  const maxParejas = Math.max(..._divisiones.map(d => {
+    return _semanas.length; // fallback — se refinará al tener parejas reales
+  }), 0);
+  const necesarias = _divisiones.length
+    ? _divisiones.reduce((max, d) => Math.max(max, d.numParejas || 0), 0)
+    : 0;
+  const jornadasNecesarias = necesarias > 1 ? necesarias - 1 : null;
+
+  document.getElementById('cnt-jornadas').textContent     = nJ;
+  document.getElementById('cnt-recuperacion').textContent  = nR;
+  document.getElementById('cnt-necesarias').textContent   = jornadasNecesarias || '—';
+
+  // Color del contador jornadas según si cubre lo necesario
+  const cntEl = document.getElementById('cnt-jornadas');
+  if (jornadasNecesarias) {
+    cntEl.style.color = nJ >= jornadasNecesarias ? 'var(--verde)' : 'var(--azul)';
+  }
 }
 
 function sincronizarAplazFase4() {

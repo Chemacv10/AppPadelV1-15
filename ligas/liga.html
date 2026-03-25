@@ -556,7 +556,45 @@ function renderTablaDivision(divId) {
       ${div.ascienden_directo > 0 ? `Ascienden directo: ${div.ascienden_directo} primeros · ` : ''}
       ${div.ascienden_playoff > 0 ? `Play-off: ${div.ascienden_playoff + div.ascienden_directo}º · ` : ''}
       ${div.descienden > 0 ? `Descienden: últimos ${div.descienden}` : ''}
-    </div>`;
+    </div>
+    ${renderResultadosUltimaJornada(divId)}`;
+}
+
+function renderResultadosUltimaJornada(divId) {
+  // Buscar la jornada más reciente con partidos jugados en esta división
+  const partidosDivision = _partidos.filter(p =>
+    p.division_id === divId && (p.estado === 'jugado' || (p.estado||'').startsWith('wo'))
+  );
+  if (!partidosDivision.length) return '';
+
+  // Agrupar por jornada y coger la de número más alto
+  const jornadaIds = [...new Set(partidosDivision.map(p => p.jornada_id))];
+  const jornadasConPartidos = _jornadas
+    .filter(j => jornadaIds.includes(j.id))
+    .sort((a, b) => (b.numero || 0) - (a.numero || 0));
+
+  const ultimaJornada = jornadasConPartidos[0];
+  if (!ultimaJornada) return '';
+
+  const partidos = partidosDivision.filter(p => p.jornada_id === ultimaJornada.id);
+  const label = ultimaJornada.tipo === 'recuperacion' ? 'Recuperación' : `${ultimaJornada.numero}ª Jornada`;
+
+  return `<div style="margin-top:12px">
+    <div style="font-size:10px;font-weight:900;color:var(--sutil);text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px">
+      Resultados — ${label}
+    </div>
+    ${partidos.map(p => {
+      const pa = p.pareja_a?.nombre1 || '—';
+      const pb = p.pareja_b?.nombre1 || '—';
+      const wo = (p.estado||'').startsWith('wo');
+      const score = wo ? 'WO' : formatScore(p);
+      return `<div style="display:flex;align-items:center;gap:6px;padding:6px 0;border-bottom:1px solid #f8fafc">
+        <span style="flex:1;font-size:11px;font-weight:${p.ganador==='a'?'900':'700'};color:${p.ganador==='a'?'var(--verde)':'var(--texto)'}">${pa}</span>
+        <span style="font-size:11px;font-weight:800;color:var(--azul);padding:2px 8px;background:#eff6ff;border-radius:100px;white-space:nowrap">${score}</span>
+        <span style="flex:1;font-size:11px;font-weight:${p.ganador==='b'?'900':'700'};color:${p.ganador==='b'?'var(--verde)':'var(--texto)'};text-align:right">${pb}</span>
+      </div>`;
+    }).join('')}
+  </div>`;
 }
 
 // ── Participantes ─────────────────────────────────────────────
@@ -661,17 +699,54 @@ function renderCalendario() {
     el.innerHTML = '<div style="text-align:center;padding:20px;font-size:12px;color:var(--sutil);font-weight:700">Sin jornadas. Genera el calendario cerrando la inscripción.</div>';
     return;
   }
+  const DIAS = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+
   el.innerHTML = _jornadas.map(j => {
     const pj = _partidos.filter(p => p.jornada_id === j.id);
     const jugados  = pj.filter(p => p.estado === 'jugado' || (p.estado||'').startsWith('wo')).length;
-    const pendientes = pj.filter(p => p.estado === 'pendiente').length;
     const tipoLabel = j.tipo === 'recuperacion' ? '🔄 Recuperación' : `${j.numero}ª Jornada`;
     const borde = j.estado === 'en_curso' ? 'border-left:3px solid var(--azul);border-radius:0 14px 14px 0' : '';
     const badgeCls = j.estado === 'en_curso' ? 'bd-b' : j.estado === 'completada' ? 'bd-g' : 'bd-gr';
     const badgeTxt = j.estado === 'en_curso' ? 'En curso' : j.estado === 'completada' ? 'Completada' : 'Pendiente';
 
+    const partidosHTML = pj.map(p => {
+      const pa = p.pareja_a?.nombre1 || '—';
+      const pb = p.pareja_b?.nombre1 || '—';
+      const jugado = p.estado === 'jugado';
+      const wo     = (p.estado||'').startsWith('wo');
+      const score  = jugado
+        ? `<span class="partido-score ps-win">${formatScore(p)}</span>`
+        : wo ? `<span class="partido-score ps-wo">WO</span>`
+             : `<span class="partido-score ps-pend">Pendiente</span>`;
+
+      // Día + hora
+      let metaPartido = '';
+      if (p.fecha_sugerida) {
+        const d = new Date(p.fecha_sugerida + 'T00:00:00');
+        metaPartido += DIAS[d.getDay()] + ' ' + d.getDate();
+      }
+      if (p.hora_inicio) metaPartido += (metaPartido ? ' · ' : '') + p.hora_inicio.slice(0,5) + 'h';
+
+      // Chip pista
+      const chipPistaHTML = p.pista_nombre
+        ? `<span style="background:#eff6ff;color:#1e40af;border-radius:100px;padding:2px 7px;font-size:9px;font-weight:800;flex-shrink:0">${p.pista_nombre}</span>`
+        : `<span style="background:#fef9c3;color:#92400e;border-radius:100px;padding:2px 7px;font-size:9px;font-weight:800;flex-shrink:0">⚠ Sin pista</span>`;
+
+      return `<div class="partido-card" style="margin-bottom:6px" onclick="abrirResultado('${p.id}')">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:5px">
+          ${metaPartido ? `<span style="font-size:10px;font-weight:700;color:var(--sutil)">${metaPartido}</span>` : ''}
+          ${chipPistaHTML}
+        </div>
+        <div class="partido-equipos">
+          <span class="partido-nombre ${p.ganador==='a'?'asc-txt':''}">${pa}</span>
+          ${score}
+          <span class="partido-nombre" style="text-align:right;${p.ganador==='b'?'color:var(--verde);font-weight:900':''}">${pb}</span>
+        </div>
+      </div>`;
+    }).join('');
+
     return `<div class="card" style="${borde}">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
         <div style="font-size:13px;font-weight:900;color:var(--texto)">${tipoLabel}</div>
         <span class="badge ${badgeCls}">${badgeTxt}</span>
       </div>
@@ -679,23 +754,7 @@ function renderCalendario() {
         ${j.fecha_ini ? lpFechaCorta(j.fecha_ini) + ' – ' + lpFechaCorta(j.fecha_fin) : 'Sin fecha'}
         · ${jugados}/${pj.length} partidos
       </div>
-      ${pj.slice(0,3).map(p => {
-        const pa = p.pareja_a?.nombre1 || '—';
-        const pb = p.pareja_b?.nombre1 || '—';
-        const score = p.estado === 'jugado'
-          ? `<span class="partido-score ps-win">${formatScore(p)}</span>`
-          : (p.estado||'').startsWith('wo')
-            ? `<span class="partido-score ps-wo">WO</span>`
-            : `<span class="partido-score ps-pend">Pendiente</span>`;
-        return `<div class="partido-card" style="margin-bottom:5px">
-          <div class="partido-equipos">
-            <span class="partido-nombre ${p.ganador==='a'?'asc-txt':''}">${pa}</span>
-            ${score}
-            <span class="partido-nombre" style="text-align:right;${p.ganador==='b'?'color:var(--verde);font-weight:900':''}">${pb}</span>
-          </div>
-        </div>`;
-      }).join('')}
-      ${pj.length > 3 ? `<div style="font-size:10px;color:var(--sutil);text-align:center;font-weight:700">+${pj.length-3} partidos más</div>` : ''}
+      ${partidosHTML}
     </div>`;
   }).join('');
 }
